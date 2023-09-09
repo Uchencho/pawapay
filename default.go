@@ -133,7 +133,7 @@ func (s *Service) makeRequest(method, resource string, reqBody interface{}, resp
 	apiAnnotation.RequestPayload = string(rb)
 	apiAnnotation.ResponseCode = res.StatusCode
 	apiAnnotation.ResponsePayload = string(b)
-	if strings.EqualFold(os.Getenv("STAGE"), "prod") {
+	if !strings.EqualFold(os.Getenv("env"), "testing") {
 		apiAnnotation.URL = URL
 	}
 

@@ -66,7 +66,7 @@ func (s *Service) CreatePayout(timeProvider TimeProviderFunc, payoutId string, a
 	payload := s.newCreatePayoutRequest(timeProvider, payoutId, amt, countryCode, correspondent, description, pn)
 
 	var response CreatePayoutResponse
-	annotation, err := s.makeRequest(http.MethodPost, resource, &payload, &response)
+	annotation, err := s.makeRequest(http.MethodPost, resource, payload, &response)
 	if err != nil {
 		return CreatePayoutResponse{}, err
 	}

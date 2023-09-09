@@ -10,6 +10,17 @@ import (
 func main() {
 	cfg := pawapay.GetConfigFromEnvVars()
 	cfg.AllowRequestLogging() // only for debugging, would not advise this for production. Also not necessary, read on for why
+
+	/*
+		You can also explicitly declare the config
+		cfg := pawapay.Config{
+				APIKey:      "key",
+				BaseURL:     "url",
+				LogRequest:  os.Getenv("env") == "production",
+				LogResponse: strings.EqualFold(os.Getenv("env"), "production"),
+			}
+	*/
+
 	service := pawapay.NewService(cfg)
 
 	amt := pawapay.Amount{Currency: "GHS", Value: "500"}
@@ -28,8 +39,6 @@ func main() {
 	resp, err := service.CreatePayout(time.Now, "uniqueId", amt, description, pn, correspondent.Correspondent)
 	if err != nil {
 		log.Printf("something went wrong, we will confirm through their webhook")
-
-		// PLEASE DON'T BELIEVE THAT THEY DID NOT PROCESS THE TRANSFER, CONFIRM
 
 		// even in error, depending on the error, you might have access to the annotation
 
