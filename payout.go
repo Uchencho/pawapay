@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
-	"github.com/biter777/countries"
-	"github.com/pkg/errors"
+	"github.com/pariz/gountries"
 )
 
 // Config represents the pawapay config
@@ -60,18 +58,18 @@ func NewService(c Config) Service {
 
 // CreatePayout provides the functionality of creating a payout
 // See docs https://docs.pawapay.co.uk/#operation/createPayout for more details
-func (s *Service) CreatePayout(timeProvider TimeProviderFunc, payoutId string, amt Amount,
-	description string, pn PhoneNumber, correspondent string) (CreatePayoutResponse, error) {
+func (s *Service) CreatePayout(timeProvider TimeProviderFunc, payoutReq PayoutRequest) (CreatePayoutResponse, error) {
 
-	cc, err := strconv.Atoi(pn.CountryCode)
+	query := gountries.New()
+	se, err := query.FindCountryByCallingCode(payoutReq.PhoneNumber.CountryCode)
 	if err != nil {
-		return CreatePayoutResponse{}, errors.Wrapf(err, "unable to convert countryCode=%s to integer", pn.CountryCode)
+		return CreatePayoutResponse{}, err
 	}
-	c := countries.ByNumeric(cc)
-	countryCode := c.Alpha3()
+	countryCode := se.Alpha3
 
 	resource := "payouts"
-	payload := s.newCreatePayoutRequest(timeProvider, payoutId, amt, countryCode, correspondent, description, pn)
+	payload := s.newCreatePayoutRequest(timeProvider, payoutReq.PayoutId, payoutReq.Amount, countryCode,
+		payoutReq.Correspondent, payoutReq.Description, payoutReq.PhoneNumber)
 
 	var response CreatePayoutResponse
 	annotation, err := s.makeRequest(http.MethodPost, resource, payload, &response)

@@ -35,8 +35,15 @@ func main() {
 	// each mapping, think country, have a number of correspondents, pick the one you are trying to send money to
 	// ideally you will take this as an input and map to the correspondent of your choice
 	correspondent := allCorrespondentMappings[0].Correspondents[0]
+	req := pawapay.PayoutRequest{
+		Amount:        amt,
+		PhoneNumber:   pn,
+		Description:   description,
+		PayoutId:      "uniqueId",
+		Correspondent: correspondent.Correspondent,
+	}
 
-	resp, err := service.CreatePayout(time.Now, "uniqueId", amt, description, pn, correspondent.Correspondent)
+	resp, err := service.CreatePayout(time.Now, req)
 	if err != nil {
 		log.Printf("something went wrong, we will confirm through their webhook")
 

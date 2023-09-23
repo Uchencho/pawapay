@@ -2,7 +2,7 @@ OUTPUT = main
 
 .PHONY: test
 test:
-	go test -failfast ./...
+	go test -failfast -cover ./...
 
 .PHONY: clean
 clean:

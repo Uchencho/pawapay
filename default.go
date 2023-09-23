@@ -9,11 +9,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/biter777/countries"
+	"github.com/pariz/gountries"
 	"github.com/pkg/errors"
 )
 
@@ -44,9 +43,9 @@ type Amount struct {
 
 type PayoutRequest struct {
 	PayoutId      string
-	Amt           Amount
+	Amount        Amount
 	Description   string
-	Pn            PhoneNumber
+	PhoneNumber   PhoneNumber
 	Correspondent string
 }
 
@@ -235,15 +234,16 @@ func (s *Service) newCreateBulkPayoutRequest(timeProvider TimeProviderFunc, req 
 	requests := []CreatePayoutRequest{}
 	for _, payload := range req {
 
-		cc, err := strconv.Atoi(payload.Pn.CountryCode)
+		query := gountries.New()
+		se, err := query.FindCountryByCallingCode(payload.PhoneNumber.CountryCode)
 		if err != nil {
-			return []CreatePayoutRequest{}, errors.Wrapf(err, "unable to convert countryCode=%s to integer", payload.Pn.CountryCode)
+			return []CreatePayoutRequest{}, err
 		}
-		c := countries.ByNumeric(cc)
-		countryCode := c.Alpha3()
 
-		requests = append(requests, s.newCreatePayoutRequest(timeProvider, payload.PayoutId, payload.Amt,
-			countryCode, payload.Correspondent, payload.Description, payload.Pn))
+		countryCode := se.Alpha3
+
+		requests = append(requests, s.newCreatePayoutRequest(timeProvider, payload.PayoutId, payload.Amount,
+			countryCode, payload.Correspondent, payload.Description, payload.PhoneNumber))
 	}
 
 	return requests, nil
