@@ -3,6 +3,7 @@ package pawapay_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -106,7 +107,7 @@ func TestCreatePayout(t *testing.T) {
 func TestCreateBulkPayout(t *testing.T) {
 	table := []row{
 		{
-			Name: "Creating payout succeeds",
+			Name: "Creating bulk payout succeeds",
 			Input: []pawapay.PayoutRequest{
 				{
 					PayoutId:      testPayoutId,
@@ -166,5 +167,152 @@ func TestCreateBulkPayout(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+	}
+}
+
+func TestGetPayout(t *testing.T) {
+	table := []row{
+		{
+			Name:  "Retrieving payout succeeds",
+			Input: testPayoutId,
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := fmt.Sprintf("/payouts/%s", testPayoutId)
+						assert.Equal(t, http.MethodGet, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					var resp []pawapay.Payout
+					fileToStruct(filepath.Join("testdata", "get-payout-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(string)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		_, err := c.GetPayout(req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+
+	}
+}
+
+func TestResendPayoutCallBack(t *testing.T) {
+	table := []row{
+		{
+			Name:  "Resend payout callback succeeds",
+			Input: testPayoutId,
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					var actualBody, expectedBody pawapay.ResendCallbackRequest
+					expectedBody.PayoutId = testPayoutId
+
+					if err := json.NewDecoder(req.Body).Decode(&actualBody); err != nil {
+						log.Printf("error in unmarshalling %+v", err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := "/payouts/resend-callback"
+						assert.Equal(t, http.MethodPost, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					t.Run("Request payload is as expected", func(t *testing.T) {
+						assert.Equal(t, expectedBody, actualBody)
+					})
+
+					var resp pawapay.PayoutStatusResponse
+					fileToStruct(filepath.Join("testdata", "payout-status-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(string)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		_, err := c.ResendCallback(req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+
+	}
+}
+
+func TestFailEnqueuedPayout(t *testing.T) {
+	table := []row{
+		{
+			Name:  "Fail enqueued payout",
+			Input: testPayoutId,
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := fmt.Sprintf("/payouts/fail-enqueued/%s", testPayoutId)
+						assert.Equal(t, http.MethodPost, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					var resp pawapay.PayoutStatusResponse
+					fileToStruct(filepath.Join("testdata", "payout-status-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(string)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		_, err := c.FailEnqueued(req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
 	}
 }
