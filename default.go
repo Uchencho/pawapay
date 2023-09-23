@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/biter777/countries"
 	"github.com/pkg/errors"
 )
 
@@ -38,6 +40,14 @@ type MomoMapping struct {
 type Amount struct {
 	Value    string `json:"value"`
 	Currency string `json:"currency"`
+}
+
+type PayoutRequest struct {
+	PayoutId      string
+	Amt           Amount
+	Description   string
+	Pn            PhoneNumber
+	Correspondent string
 }
 
 // PhoneNumber holds country code and number, eg countryCode:234, number: 7017238745
@@ -78,6 +88,56 @@ type CreatePayoutResponse struct {
 	PayoutID   string `json:"payoutId"`
 	Status     string `json:"status"`
 	Created    string `json:"created"`
+	Annotation APIAnnotation
+}
+
+type CreateBulkPayoutResponse struct {
+	Result     []CreatePayoutResponse
+	Annotation APIAnnotation
+}
+
+type FailureReason struct {
+	FailureCode    string `json:"failureCode"`
+	FailureMessage string `json:"failureMessage"`
+}
+
+type Payout struct {
+	Amount               string                 `json:"amount"`
+	Correspondent        string                 `json:"correspondent"`
+	CorrespondentIds     map[string]interface{} `json:"correspondentIds"`
+	Country              string                 `json:"country"`
+	Created              string                 `json:"created"`
+	Currency             string                 `json:"currency"`
+	CustomerTimestamp    string                 `json:"customerTimestamp"`
+	PayoutID             string                 `json:"payoutId"`
+	Recipient            Recipient              `json:"recipient"`
+	StatementDescription string                 `json:"statementDescription"`
+	Status               string                 `json:"status"`
+	FailureReason        FailureReason          `json:"failureReason"`
+	Annotation           APIAnnotation
+}
+
+// IsSuccessful reports if a payout is successful
+func (t Payout) IsSuccessful() bool { return strings.EqualFold(t.Status, "completed") }
+
+// IsFailed reports if a payout failed
+func (t Payout) IsFailed() bool { return strings.EqualFold(t.Status, "failed") }
+
+// IsPending reports if a payout is still pending
+func (t Payout) IsPending() bool { return !t.IsSuccessful() && !t.IsFailed() && t.Status != "" }
+
+// IsNotFound checks a payout response to see if the transaction is not found
+func (t Payout) IsNotFound() bool {
+	return t.Annotation.ResponseCode == 200 && t.Annotation.ResponsePayload == "[]"
+}
+
+type ResendCallbackRequest struct {
+	PayoutId string `json:"payoutId"`
+}
+
+type PayoutStatusResponse struct {
+	PayoutId   string `json:"payoutId"`
+	Status     string `json:"status"`
 	Annotation APIAnnotation
 }
 
@@ -154,7 +214,10 @@ func (s *Service) makeRequest(method, resource string, reqBody interface{}, resp
 
 func (s *Service) newCreatePayoutRequest(timeProvider TimeProviderFunc, payoutId string, amt Amount, countryCode, code, description string,
 	pn PhoneNumber) CreatePayoutRequest {
-	layout := "2006-01-02 15:04:04"
+	layout := "2006-01-02T15:04:05Z"
+	if len(description) > 22 {
+		description = description[:22]
+	}
 
 	return CreatePayoutRequest{
 		PayoutId:             payoutId,
@@ -163,12 +226,30 @@ func (s *Service) newCreatePayoutRequest(timeProvider TimeProviderFunc, payoutId
 		Country:              countryCode,
 		Correspondent:        code,
 		CustomerTimestamp:    timeProvider().Format(layout),
-		StatementDescription: description[:22],
+		StatementDescription: description,
 		Recipient:            Recipient{Type: recipientType, Address: Address{Value: fmt.Sprintf("%s%s", pn.CountryCode, pn.Number)}},
 	}
 }
 
-func GetMomoMapping(ext string) (MomoMapping, error) {
+func (s *Service) newCreateBulkPayoutRequest(timeProvider TimeProviderFunc, req []PayoutRequest) ([]CreatePayoutRequest, error) {
+	requests := []CreatePayoutRequest{}
+	for _, payload := range req {
+
+		cc, err := strconv.Atoi(payload.Pn.CountryCode)
+		if err != nil {
+			return []CreatePayoutRequest{}, errors.Wrapf(err, "unable to convert countryCode=%s to integer", payload.Pn.CountryCode)
+		}
+		c := countries.ByNumeric(cc)
+		countryCode := c.Alpha3()
+
+		requests = append(requests, s.newCreatePayoutRequest(timeProvider, payload.PayoutId, payload.Amt,
+			countryCode, payload.Correspondent, payload.Description, payload.Pn))
+	}
+
+	return requests, nil
+}
+
+func GetAllCorrespondents() ([]MomoMapping, error) {
 	var path string
 
 	if os.Getenv("BANK_FILE_PATH") != "" {
@@ -177,18 +258,13 @@ func GetMomoMapping(ext string) (MomoMapping, error) {
 	fileName := filepath.Join(path, "momo.json")
 	bb, err := os.ReadFile(fileName)
 	if err != nil {
-		return MomoMapping{}, err
+		return []MomoMapping{}, err
 	}
 
 	var momoProviderMappings []MomoMapping
 	if err := json.Unmarshal(bb, &momoProviderMappings); err != nil {
-		return MomoMapping{}, err
+		return []MomoMapping{}, err
 	}
 
-	for _, mapping := range momoProviderMappings {
-		if strings.EqualFold(mapping.Extension, ext) {
-			return mapping, nil
-		}
-	}
-	return MomoMapping{}, fmt.Errorf("no mapping found for ext=%s", ext)
+	return momoProviderMappings, nil
 }

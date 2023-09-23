@@ -27,14 +27,14 @@ func main() {
 	description := "sending money to all my children" // this will be truncated to the first 22 characters
 	pn := pawapay.PhoneNumber{CountryCode: "233", Number: "704584739348"}
 
-	mapping, err := pawapay.GetMomoMapping(pn.CountryCode)
+	allCorrespondentMappings, err := pawapay.GetAllCorrespondents()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// each mapping, think country, have a number of correspondents, pick the one you are trying to send money to
 	// ideally you will take this as an input and map to the correspondent of your choice
-	correspondent := mapping.Correspondents[2]
+	correspondent := allCorrespondentMappings[0].Correspondents[0]
 
 	resp, err := service.CreatePayout(time.Now, "uniqueId", amt, description, pn, correspondent.Correspondent)
 	if err != nil {
