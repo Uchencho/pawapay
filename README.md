@@ -2,6 +2,11 @@
 
 [Pawapay](https://pawapay.io/) client application written in Go
 
+
+![alt text](https://global-uploads.webflow.com/62824591015aa314fd308df1/6411b26596e3de3f52551c00_Logopawapay-p-500.png)
+
+
+
 ## Usage
 
 ### Install Package
@@ -30,7 +35,8 @@ import (
 
 func main() {
 	cfg := pawapay.GetConfigFromEnvVars()
-	cfg.AllowRequestLogging() // only for debugging, would not advise this for production. Also not necessary, read on for why
+	cfg.AllowRequestLogging() // only for debugging, would not advise this for production.
+	// Also not absolutely necessary because we store API annotations in the response returned
 
 	/*
 		You can also explicitly declare the config
@@ -53,8 +59,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// each mapping, think country, have a number of correspondents, pick the one you are trying to send money to
-	// ideally you will take this as an input and map to the correspondent of your choice
+	// each mapping, think country, have a number of correspondents, pick the one you are trying to send money to.
+	// Ideally you will take this as input and map to the correspondent of your choice
 	correspondent := allCorrespondentMappings[0].Correspondents[0]
 	req := pawapay.PayoutRequest{
 		Amount:        amt,
@@ -81,5 +87,7 @@ func main() {
 ```
 
 > **NOTE**
+
 > You also have access to deposit and refund functionalities
+
 > Check the `client` directory to see a sample implementation and pawapay_test.go file to see sample tests
