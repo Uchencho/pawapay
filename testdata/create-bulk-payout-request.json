@@ -1,0 +1,15 @@
+[
+  {
+    "payoutId": "d334c312-6c18-4d7e-a0f1-097d398543d3",
+    "amount": "1000",
+    "currency": "GHS",
+    "country": "GHA",
+    "correspondent": "MTN_MOMO_GHA",
+    "recipient": {
+      "type": "MSISDN",
+      "address": { "value": "233247492147" }
+    },
+    "customerTimestamp": "2021-01-01T00:00:00Z",
+    "statementDescription": "test"
+  }
+]

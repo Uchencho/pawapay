@@ -1,0 +1,23 @@
+[
+  {
+    "payoutId": "d334c312-6c18-4d7e-a0f1-097d398543d3",
+    "status": "COMPLETED",
+    "amount": "123.45",
+    "currency": "ZMW",
+    "country": "ZMB",
+    "correspondent": "MTN_MOMO_ZMB",
+    "recipient": {
+      "type": "MSISDN",
+      "address": {
+        "value": "256780334452"
+      }
+    },
+    "customerTimestamp": "2020-10-19T08:17:00Z",
+    "statementDescription": "From ACME company",
+    "created": "2020-10-19T08:17:01Z",
+    "receivedByRecipient": "2020-10-19T08:17:02Z",
+    "correspondentIds": {
+      "SOME_CORRESPONDENT_ID": "12356789"
+    }
+  }
+]
