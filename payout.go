@@ -121,7 +121,7 @@ func (s *Service) GetPayout(payoutId string) (Payout, error) {
 	return result, nil
 }
 
-// ResendCallback provides the functionality of resending a callback (webhook)
+// ResendPayoutCallback provides the functionality of resending a callback (webhook)
 // See docs https://docs.pawapay.co.uk/#operation/payoutsResendCallback for more details
 func (s *Service) ResendPayoutCallback(payoutId string) (PayoutStatusResponse, error) {
 
