@@ -1,0 +1,30 @@
+[
+  {
+    "depositId": "d334c312-6c18-4d7e-a0f1-097d398543d3",
+    "status": "COMPLETED",
+    "requestedAmount": "200.00",
+    "depositedAmount": "1.00",
+    "currency": "ZMW",
+    "country": "ZMB",
+    "payer": {
+      "type": "MSISDN",
+      "address": {
+        "value": "260961234567"
+      }
+    },
+    "correspondent": "MTN_MOMO_ZMB",
+    "statementDescription": "To ACME company",
+    "customerTimestamp": "2020-10-19T08:17:00Z",
+    "created": "2020-10-19T08:17:01Z",
+    "respondedByPayer": "2020-10-19T08:17:02Z",
+    "correspondentIds": {
+      "SOME_CORRESPONDENT_ID": "12356789"
+    },
+    "suspiciousActivityReport": [
+      {
+        "activityType": "AMOUNT_DISCREPANCY",
+        "comment": "There is a discrepancy between requested and actual deposit amount has been detected."
+      }
+    ]
+  }
+]

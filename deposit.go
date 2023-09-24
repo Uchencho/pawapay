@@ -34,7 +34,7 @@ func (s *Service) InitiateDeposit(timeProvider TimeProviderFunc, depositReq Depo
 
 // CreateBulkDeposit provides the functionality of creating a bulk deposit
 // See docs https://docs.pawapay.co.uk/#operation/createDeposits for more details
-func (s *Service) CreateBulkDeposit(timeProvider TimeProviderFunc, data []DepositRequest) (CreateBulkDepositResponse, error) {
+func (s *Service) InitiateBulkDeposit(timeProvider TimeProviderFunc, data []DepositRequest) (CreateBulkDepositResponse, error) {
 
 	resource := "deposits/bulk"
 	payload, err := s.newCreateBulkDepositRequest(timeProvider, data)
@@ -55,7 +55,7 @@ func (s *Service) CreateBulkDeposit(timeProvider TimeProviderFunc, data []Deposi
 // See docs https://docs.pawapay.co.uk/#operation/getDeposit for more details
 func (s *Service) GetDeposit(depositId string) (Deposit, error) {
 
-	resource := fmt.Sprintf("payouts/%s", depositId)
+	resource := fmt.Sprintf("deposits/%s", depositId)
 	var (
 		response []Deposit
 		result   Deposit

@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	testPayoutId = "d334c312-6c18-4d7e-a0f1-097d398543d3"
+	testPayoutId  = "d334c312-6c18-4d7e-a0f1-097d398543d3"
+	testDepositId = "d334c312-6c18-4d7e-a0f1-097d398543d3"
 )
 
 func timeProvider() pawapay.TimeProviderFunc {
@@ -265,7 +266,7 @@ func TestResendPayoutCallBack(t *testing.T) {
 
 		log.Printf("======== Running row: %s ==========", row.Name)
 
-		_, err := c.ResendCallback(req)
+		_, err := c.ResendPayoutCallback(req)
 		t.Run("No error is returned", func(t *testing.T) {
 			assert.NoError(t, err)
 		})
@@ -314,5 +315,237 @@ func TestFailEnqueuedPayout(t *testing.T) {
 		t.Run("No error is returned", func(t *testing.T) {
 			assert.NoError(t, err)
 		})
+	}
+}
+
+func TestCreateDeposit(t *testing.T) {
+	table := []row{
+		{
+			Name: "deposit is initialized successfully",
+			Input: pawapay.DepositRequest{
+				DepositId:     testDepositId,
+				Amount:        pawapay.Amount{Currency: "GHS", Value: "1000"},
+				Description:   "test",
+				PhoneNumber:   pawapay.PhoneNumber{CountryCode: "233", Number: "247492147"},
+				Correspondent: "MTN_MOMO_GHA",
+			},
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					var actualBody, expectedBody pawapay.CreateDepositRequest
+
+					if err := json.NewDecoder(req.Body).Decode(&actualBody); err != nil {
+						log.Printf("error in unmarshalling %+v", err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := "/deposits"
+						assert.Equal(t, http.MethodPost, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					t.Run("Request is as expected", func(t *testing.T) {
+						fileToStruct(filepath.Join("testdata", "create-deposit-request.json"), &expectedBody)
+						assert.Equal(t, expectedBody, actualBody)
+					})
+
+					var resp pawapay.CreateDepositResponse
+					fileToStruct(filepath.Join("testdata", "create-deposit-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(pawapay.DepositRequest)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		_, err := c.InitiateDeposit(timeProvider(), req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+
+	}
+}
+
+func TestCreateBulkDeposit(t *testing.T) {
+	table := []row{
+		{
+			Name: "bulk deposit is initialized successfully",
+			Input: []pawapay.DepositRequest{
+				{
+					DepositId:     testDepositId,
+					Amount:        pawapay.Amount{Currency: "GHS", Value: "1000"},
+					Description:   "test",
+					PhoneNumber:   pawapay.PhoneNumber{CountryCode: "233", Number: "247492147"},
+					Correspondent: "MTN_MOMO_GHA",
+					PreAuthCode:   "QJS3RSK",
+				},
+			},
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					var actualBody, expectedBody []pawapay.CreateDepositRequest
+
+					if err := json.NewDecoder(req.Body).Decode(&actualBody); err != nil {
+						log.Printf("error in unmarshalling %+v", err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := "/deposits/bulk"
+						assert.Equal(t, http.MethodPost, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					t.Run("Request is as expected", func(t *testing.T) {
+						fileToStruct(filepath.Join("testdata", "create-bulk-deposit-request.json"), &expectedBody)
+						assert.Equal(t, expectedBody, actualBody)
+					})
+
+					var resp []pawapay.CreateDepositResponse
+					fileToStruct(filepath.Join("testdata", "create-bulk-deposit-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.([]pawapay.DepositRequest)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		_, err := c.InitiateBulkDeposit(timeProvider(), req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestGetDeposit(t *testing.T) {
+	table := []row{
+		{
+			Name:  "Retrieving deposit succeeds",
+			Input: testDepositId,
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := fmt.Sprintf("/deposits/%s", testDepositId)
+						assert.Equal(t, http.MethodGet, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					var resp []pawapay.Deposit
+					fileToStruct(filepath.Join("testdata", "get-deposit-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(string)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		_, err := c.GetDeposit(req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestResendDepositCallBack(t *testing.T) {
+	table := []row{
+		{
+			Name:  "Resend payout callback succeeds",
+			Input: testDepositId,
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					var actualBody, expectedBody pawapay.ResendCallbackRequest
+					expectedBody.DepositId = testDepositId
+
+					if err := json.NewDecoder(req.Body).Decode(&actualBody); err != nil {
+						log.Printf("error in unmarshalling %+v", err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := "/deposits/resend-callback"
+						assert.Equal(t, http.MethodPost, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					t.Run("Request payload is as expected", func(t *testing.T) {
+						assert.Equal(t, expectedBody, actualBody)
+					})
+
+					var resp pawapay.DepositStatusResponse
+					fileToStruct(filepath.Join("testdata", "deposit-status-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(string)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		_, err := c.ResendDepositCallback(req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+
 	}
 }

@@ -123,7 +123,7 @@ func (s *Service) GetPayout(payoutId string) (Payout, error) {
 
 // ResendCallback provides the functionality of resending a callback (webhook)
 // See docs https://docs.pawapay.co.uk/#operation/payoutsResendCallback for more details
-func (s *Service) ResendCallback(payoutId string) (PayoutStatusResponse, error) {
+func (s *Service) ResendPayoutCallback(payoutId string) (PayoutStatusResponse, error) {
 
 	resource := "payouts/resend-callback"
 	payload := ResendCallbackRequest{PayoutId: payoutId}
