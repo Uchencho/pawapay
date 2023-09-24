@@ -549,3 +549,180 @@ func TestResendDepositCallBack(t *testing.T) {
 
 	}
 }
+
+func TestRequestRefund(t *testing.T) {
+
+	type refundPayload struct {
+		DepositId string
+		Amount    pawapay.Amount
+		RefundId  string
+	}
+
+	table := []row{
+		{
+			Name: "refund is requested successfully",
+			Input: refundPayload{
+				DepositId: testDepositId,
+				Amount:    pawapay.Amount{Currency: "GHS", Value: "1000"},
+				RefundId:  testDepositId,
+			},
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					var actualBody, expectedBody pawapay.RefundRequest
+
+					if err := json.NewDecoder(req.Body).Decode(&actualBody); err != nil {
+						log.Printf("error in unmarshalling %+v", err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := "/refunds"
+						assert.Equal(t, http.MethodPost, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					t.Run("Request is as expected", func(t *testing.T) {
+						fileToStruct(filepath.Join("testdata", "refund-request.json"), &expectedBody)
+						assert.Equal(t, expectedBody, actualBody)
+					})
+
+					var resp pawapay.InitiateRefundResponse
+					fileToStruct(filepath.Join("testdata", "refund-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(refundPayload)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		_, err := c.RequestRefund(req.RefundId, req.DepositId, req.Amount)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+
+	}
+}
+
+func TestGetRefund(t *testing.T) {
+	table := []row{
+		{
+			Name:  "Retrieving refund succeeds",
+			Input: testDepositId,
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := fmt.Sprintf("/refunds/%s", testDepositId)
+						assert.Equal(t, http.MethodGet, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					var resp []pawapay.Refund
+					fileToStruct(filepath.Join("testdata", "get-refund-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(string)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		result, err := c.GetRefund(req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+
+		t.Run("Annotation response code is as expected", func(t *testing.T) {
+			assert.Equal(t, http.StatusOK, result.Annotation.ResponseCode)
+		})
+	}
+}
+
+func TestResendRefundCallBack(t *testing.T) {
+	table := []row{
+		{
+			Name:  "Resend refund callback succeeds",
+			Input: testDepositId,
+			CustomServerURL: func(t *testing.T) string {
+				pawapayService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
+					var actualBody, expectedBody pawapay.ResendCallbackRequest
+					expectedBody.RefundId = testDepositId
+
+					if err := json.NewDecoder(req.Body).Decode(&actualBody); err != nil {
+						log.Printf("error in unmarshalling %+v", err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+
+					t.Run("URL and request method is as expected", func(t *testing.T) {
+						expectedURL := "/refunds/resend-callback"
+						assert.Equal(t, http.MethodPost, req.Method)
+						assert.Equal(t, expectedURL, req.RequestURI)
+					})
+
+					t.Run("Request payload is as expected", func(t *testing.T) {
+						assert.Equal(t, expectedBody, actualBody)
+					})
+
+					var resp pawapay.RefundStatusResponse
+					fileToStruct(filepath.Join("testdata", "refund-status-response.json"), &resp)
+
+					w.WriteHeader(http.StatusOK)
+					bb, _ := json.Marshal(resp)
+					w.Write(bb)
+
+				}))
+				return pawapayService.URL
+			},
+		},
+	}
+
+	for _, row := range table {
+
+		c := pawapay.NewService(pawapay.Config{
+			BaseURL: row.CustomServerURL(t),
+		})
+
+		req := row.Input.(string)
+
+		log.Printf("======== Running row: %s ==========", row.Name)
+
+		result, err := c.ResendRefundCallback(req)
+		t.Run("No error is returned", func(t *testing.T) {
+			assert.NoError(t, err)
+		})
+		t.Run("Annotation response code is as expected", func(t *testing.T) {
+			assert.Equal(t, http.StatusOK, result.Annotation.ResponseCode)
+		})
+	}
+}
