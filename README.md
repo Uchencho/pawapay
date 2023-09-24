@@ -51,7 +51,7 @@ func main() {
 	service := pawapay.NewService(cfg)
 
 	amt := pawapay.Amount{Currency: "GHS", Value: "500"}
-	description := "sending money to all my children" // this will be truncated to the first 22 characters
+	description := "sending money to all my children" // will be truncated to the first 22 char
 	pn := pawapay.PhoneNumber{CountryCode: "233", Number: "704584739348"}
 
 	allCorrespondentMappings, err := pawapay.GetAllCorrespondents()
@@ -59,7 +59,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// each mapping, think country, have a number of correspondents, pick the one you are trying to send money to.
+	// each mapping, think country, have a number of correspondents, pick the one you are
+        // trying to send money to.
 	// Ideally you will take this as input and map to the correspondent of your choice
 	correspondent := allCorrespondentMappings[0].Correspondents[0]
 	req := pawapay.PayoutRequest{
