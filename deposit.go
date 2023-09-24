@@ -72,7 +72,7 @@ func (s *Service) GetDeposit(depositId string) (Deposit, error) {
 	return result, nil
 }
 
-// ResendCallback provides the functionality of resending a callback (webhook) for a deposit
+// ResendDepositCallback provides the functionality of resending a callback (webhook) for a deposit
 // See docs https://docs.pawapay.co.uk/#operation/depositsResendCallback for more details
 func (s *Service) ResendDepositCallback(depositId string) (DepositStatusResponse, error) {
 

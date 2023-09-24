@@ -147,6 +147,7 @@ func (t Payout) IsNotFound() bool {
 type ResendCallbackRequest struct {
 	PayoutId  string `json:"payoutId,omitempty"`
 	DepositId string `json:"depositId,omitempty"`
+	RefundId  string `json:"refundId,omitempty"`
 }
 
 type PayoutStatusResponse struct {
@@ -174,8 +175,69 @@ type CreateDepositResponse struct {
 	Annotation APIAnnotation
 }
 
+type InitiateRefundResponse struct {
+	RefundId   string `json:"depositId"`
+	Status     string `json:"status"`
+	Created    string `json:"created"`
+	Annotation APIAnnotation
+}
+
+type Deposit struct {
+	DepositId            string                 `json:"depositId"`
+	Status               string                 `json:"status"`
+	RequestedAmount      string                 `json:"requestedAmount"`
+	DepositedAmount      string                 `json:"depositedAmount"`
+	Currency             string                 `json:"currency"`
+	Country              string                 `json:"country"`
+	Payer                Payer                  `json:"payer"`
+	Correspondent        string                 `json:"correspondent"`
+	StatementDescription string                 `json:"statementDescription"`
+	CustomerTimestamp    string                 `json:"customerTimestamp"`
+	Created              string                 `json:"created"`
+	RespondedByPayer     string                 `json:"respondedByPayer"`
+	CorrespondentIds     map[string]interface{} `json:"correspondentIds"`
+	SuspiciousActivity   map[string]interface{} `json:"suspiciousActivityReport"`
+	FailureReason        FailureReason          `json:"failureReason"`
+	Annotation           APIAnnotation
+}
+
+type DepositStatusResponse struct {
+	DepositId  string `json:"depositId"`
+	Status     string `json:"status"`
+	Annotation APIAnnotation
+}
+
+type RefundRequest struct {
+	RefundId  string `json:"refundId"`
+	DepositId string `json:"depositId"`
+	Amount    string `json:"amount"`
+}
+
 type CreateBulkDepositResponse struct {
 	Result     []CreateDepositResponse
+	Annotation APIAnnotation
+}
+
+type Refund struct {
+	RefundId             string                 `json:"refundId"`
+	Status               string                 `json:"status"`
+	Amount               string                 `json:"amount"`
+	Currency             string                 `json:"currency"`
+	Country              string                 `json:"country"`
+	Recipient            Recipient              `json:"recipient"`
+	Correspondent        string                 `json:"correspondent"`
+	StatementDescription string                 `json:"statementDescription"`
+	CustomerTimestamp    string                 `json:"customerTimestamp"`
+	Created              string                 `json:"created"`
+	ReceivedByRecipient  string                 `json:"receivedByRecipient"`
+	CorrespondentIds     map[string]interface{} `json:"correspondentIds"`
+	FailureReason        FailureReason          `json:"failureReason"`
+	Annotation           APIAnnotation
+}
+
+type RefundStatusResponse struct {
+	RefundId   string `json:"refundId"`
+	Status     string `json:"status"`
 	Annotation APIAnnotation
 }
 
@@ -327,29 +389,12 @@ func (s *Service) newCreateBulkDepositRequest(timeProvider TimeProviderFunc, req
 	return requests, nil
 }
 
-type Deposit struct {
-	DepositId            string                 `json:"depositId"`
-	Status               string                 `json:"status"`
-	RequestedAmount      string                 `json:"requestedAmount"`
-	DepositedAmount      string                 `json:"depositedAmount"`
-	Currency             string                 `json:"currency"`
-	Country              string                 `json:"country"`
-	Payer                Payer                  `json:"recipient"`
-	Correspondent        string                 `json:"correspondent"`
-	StatementDescription string                 `json:"statementDescription"`
-	CustomerTimestamp    string                 `json:"customerTimestamp"`
-	Created              string                 `json:"created"`
-	RespondedByPayer     string                 `json:"respondedByPayer"`
-	CorrespondentIds     map[string]interface{} `json:"correspondentIds"`
-	SuspiciousActivity   map[string]interface{} `json:"suspiciousActivityReport"`
-	FailureReason        FailureReason          `json:"failureReason"`
-	Annotation           APIAnnotation
-}
-
-type DepositStatusResponse struct {
-	DepositId  string `json:"depositId"`
-	Status     string `json:"status"`
-	Annotation APIAnnotation
+func (s Service) newRefundRequest(refundId, depositId string, amount Amount) RefundRequest {
+	return RefundRequest{
+		RefundId:  refundId,
+		DepositId: depositId,
+		Amount:    amount.Value,
+	}
 }
 
 func GetAllCorrespondents() ([]MomoMapping, error) {
