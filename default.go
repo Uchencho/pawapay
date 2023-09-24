@@ -49,6 +49,15 @@ type PayoutRequest struct {
 	Correspondent string
 }
 
+type DepositRequest struct {
+	DepositId     string
+	Amount        Amount
+	Description   string
+	PhoneNumber   PhoneNumber
+	Correspondent string
+	PreAuthCode   string
+}
+
 // PhoneNumber holds country code and number, eg countryCode:234, number: 7017238745
 type PhoneNumber struct {
 	CountryCode string `json:"countryCode"`
@@ -81,6 +90,11 @@ type CreatePayoutRequest struct {
 	Recipient            Recipient `json:"recipient"`
 	CustomerTimestamp    string    `json:"customerTimestamp"`
 	StatementDescription string    `json:"statementDescription"`
+}
+
+type Payer struct {
+	Type    string  `json:"type"`
+	Address Address `json:"address"`
 }
 
 type CreatePayoutResponse struct {
@@ -131,12 +145,37 @@ func (t Payout) IsNotFound() bool {
 }
 
 type ResendCallbackRequest struct {
-	PayoutId string `json:"payoutId"`
+	PayoutId  string `json:"payoutId,omitempty"`
+	DepositId string `json:"depositId,omitempty"`
 }
 
 type PayoutStatusResponse struct {
 	PayoutId   string `json:"payoutId"`
 	Status     string `json:"status"`
+	Annotation APIAnnotation
+}
+
+type CreateDepositRequest struct {
+	DepositId            string `json:"depositId"`
+	Amount               string `json:"amount"`
+	Currency             string `json:"currency"`
+	Country              string `json:"country"`
+	Correspondent        string `json:"correspondent"`
+	Payer                Payer  `json:"payer"`
+	CustomerTimestamp    string `json:"customerTimestamp"`
+	StatementDescription string `json:"statementDescription"`
+	PreAuthorizationCode string `json:"preAuthorisationCode"`
+}
+
+type CreateDepositResponse struct {
+	DepositId  string `json:"depositId"`
+	Status     string `json:"status"`
+	Created    string `json:"created"`
+	Annotation APIAnnotation
+}
+
+type CreateBulkDepositResponse struct {
+	Result     []CreateDepositResponse
 	Annotation APIAnnotation
 }
 
@@ -247,6 +286,70 @@ func (s *Service) newCreateBulkPayoutRequest(timeProvider TimeProviderFunc, req 
 	}
 
 	return requests, nil
+}
+
+func (s *Service) newDepositRequest(timeProvider TimeProviderFunc, depositId string, amt Amount, countryCode, code, description string,
+	pn PhoneNumber, authCode string) CreateDepositRequest {
+	layout := "2006-01-02T15:04:05Z"
+	if len(description) > 22 {
+		description = description[:22]
+	}
+
+	return CreateDepositRequest{
+		DepositId:            depositId,
+		Amount:               amt.Value,
+		Currency:             amt.Currency,
+		Country:              countryCode,
+		Correspondent:        code,
+		CustomerTimestamp:    timeProvider().Format(layout),
+		StatementDescription: description,
+		PreAuthorizationCode: authCode,
+		Payer:                Payer{Type: recipientType, Address: Address{Value: fmt.Sprintf("%s%s", pn.CountryCode, pn.Number)}},
+	}
+}
+
+func (s *Service) newCreateBulkDepositRequest(timeProvider TimeProviderFunc, req []DepositRequest) ([]CreateDepositRequest, error) {
+	requests := []CreateDepositRequest{}
+	for _, payload := range req {
+
+		query := gountries.New()
+		se, err := query.FindCountryByCallingCode(payload.PhoneNumber.CountryCode)
+		if err != nil {
+			return []CreateDepositRequest{}, err
+		}
+
+		countryCode := se.Alpha3
+
+		requests = append(requests, s.newDepositRequest(timeProvider, payload.DepositId, payload.Amount,
+			countryCode, payload.Correspondent, payload.Description, payload.PhoneNumber, payload.PreAuthCode))
+	}
+
+	return requests, nil
+}
+
+type Deposit struct {
+	DepositId            string                 `json:"depositId"`
+	Status               string                 `json:"status"`
+	RequestedAmount      string                 `json:"requestedAmount"`
+	DepositedAmount      string                 `json:"depositedAmount"`
+	Currency             string                 `json:"currency"`
+	Country              string                 `json:"country"`
+	Payer                Payer                  `json:"recipient"`
+	Correspondent        string                 `json:"correspondent"`
+	StatementDescription string                 `json:"statementDescription"`
+	CustomerTimestamp    string                 `json:"customerTimestamp"`
+	Created              string                 `json:"created"`
+	RespondedByPayer     string                 `json:"respondedByPayer"`
+	CorrespondentIds     map[string]interface{} `json:"correspondentIds"`
+	SuspiciousActivity   map[string]interface{} `json:"suspiciousActivityReport"`
+	FailureReason        FailureReason          `json:"failureReason"`
+	Annotation           APIAnnotation
+}
+
+type DepositStatusResponse struct {
+	DepositId  string `json:"depositId"`
+	Status     string `json:"status"`
+	Annotation APIAnnotation
 }
 
 func GetAllCorrespondents() ([]MomoMapping, error) {
